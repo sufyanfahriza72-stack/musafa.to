@@ -34,7 +34,7 @@ function getSpreadsheet_() {
   if (active) return active;
   const props = PropertiesService.getScriptProperties().getProperty('SPREADSHEET_ID');
   if (props) return SpreadsheetApp.openById(props);
-  throw new Error('Spreadsheet aktif tidak ditemukan. Buka Code.gs dari menu Extensions > Apps Script pada spreadsheet MUSAFA.');
+  throw new Error('Spreadsheet aktif tidak ditemukan. Buka Code.gs dari menu Extensions > Apps Script pada spreadsheet.');
 }
 
 function getOrCreateSheet_(meta) {
