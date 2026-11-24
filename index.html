@@ -334,7 +334,7 @@
       <section id="tab-pelajaran" class="tab-content hidden space-y-6">
         <div class="rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 sm:p-8 shadow-sm">
           <h2 class="text-xl font-extrabold mb-1">Input Jadwal Pelajaran</h2>
-          <p class="text-xs text-slate-500 dark:text-slate-400 mb-6">Wajib memasukkan PIN Keamanan saat menyimpan, mengedit, atau menghapus.</p>
+          <p class="text-xs text-slate-500 dark:text-slate-400 mb-6">Wajib memasukkan PIN Keamanan saat menyimpan, mengedit, atau menghapus (Sabtu & Minggu libur).</p>
           <form id="form-pelajaran" onsubmit="submitPelajaran(event)" class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <input type="hidden" id="pelajaran-id">
             <div><label class="block text-xs font-bold mb-1">Nama Mata Pelajaran *</label><input type="text" id="pelajaran-mapel" required class="w-full px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 outline-none"></div>
@@ -342,7 +342,7 @@
             <div>
               <label class="block text-xs font-bold mb-1">Hari *</label>
               <select id="pelajaran-hari" class="w-full px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 outline-none">
-                <option value="Senin">Senin</option><option value="Selasa">Selasa</option><option value="Rabu">Rabu</option><option value="Kamis">Kamis</option><option value="Jumat">Jumat</option><option value="Sabtu">Sabtu</option>
+                <option value="Senin">Senin</option><option value="Selasa">Selasa</option><option value="Rabu">Rabu</option><option value="Kamis">Kamis</option><option value="Jumat">Jumat</option>
               </select>
             </div>
             <div class="grid grid-cols-2 gap-2">
@@ -375,7 +375,7 @@
             <div>
               <label class="block text-xs font-bold mb-1">Hari *</label>
               <select id="ujian-hari" class="w-full px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 outline-none">
-                <option value="Senin">Senin</option><option value="Selasa">Selasa</option><option value="Rabu">Rabu</option><option value="Kamis">Kamis</option><option value="Jumat">Jumat</option><option value="Sabtu">Sabtu</option>
+                <option value="Senin">Senin</option><option value="Selasa">Selasa</option><option value="Rabu">Rabu</option><option value="Kamis">Kamis</option><option value="Jumat">Jumat</option>
               </select>
             </div>
             <div><label class="block text-xs font-bold mb-1">Jam Ujian (Contoh: 07:30 - 09:30) *</label><input type="text" id="ujian-jam" placeholder="07:30 - 09:30" required class="w-full px-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 outline-none"></div>
@@ -725,6 +725,17 @@
       if (!Array.isArray(APP_STATE.data.tugas)) APP_STATE.data.tugas = [];
     }
 
+    function mergeNotulensiLists(serverList, localList) {
+      const map = new Map();
+      (Array.isArray(localList) ? localList : []).forEach((item) => {
+        if (item && item.ID) map.set(String(item.ID), item);
+      });
+      (Array.isArray(serverList) ? serverList : []).forEach((item) => {
+        if (item && item.ID) map.set(String(item.ID), Object.assign({}, map.get(String(item.ID)) || {}, item));
+      });
+      return Array.from(map.values());
+    }
+
     function computeLocalToken(minuteOffset = 0) {
       const slot = Math.floor(Date.now() / 60000) + minuteOffset;
       const str = 'MUSAFA-TTE-FT-' + slot;
@@ -745,8 +756,13 @@
           if (!Array.isArray(APP_STATE.data.pelajaran) || APP_STATE.data.pelajaran.length === 0) {
             APP_STATE.data.pelajaran = DEFAULT_PELAJARAN_SEED.slice();
           }
-          ensureNotulensiStore();
         }
+        const backupRaw = localStorage.getItem('musafa_notulensi_backup_v1');
+        if (backupRaw) {
+          const backupList = JSON.parse(backupRaw);
+          APP_STATE.data.notulensi = mergeNotulensiLists(APP_STATE.data.notulensi, backupList);
+        }
+        ensureNotulensiStore();
       } catch (e) {}
     }
 
@@ -754,6 +770,7 @@
       try {
         ensureNotulensiStore();
         localStorage.setItem('musafa_pwa_cache_v3', JSON.stringify(APP_STATE.data));
+        localStorage.setItem('musafa_notulensi_backup_v1', JSON.stringify(APP_STATE.data.notulensi));
       } catch (e) {}
     }
 
@@ -1007,9 +1024,7 @@
             const sheetPelajaran = Array.isArray(res.pelajaran) ? res.pelajaran : [];
             const sheetNotulensi = Array.isArray(res.notulensi) ? res.notulensi : [];
             const localNotulensi = APP_STATE.data.notulensi || [];
-
-            // Pertahankan notulensi lokal jika sheet belum mengembalikan atau sedang kosong
-            const mergedNotulensi = sheetNotulensi.length > 0 ? sheetNotulensi : localNotulensi;
+            const mergedNotulensi = sheetNotulensi.length > 0 ? mergeNotulensiLists(sheetNotulensi, localNotulensi) : localNotulensi;
 
             APP_STATE.data = {
               agenda: Array.isArray(res.agenda) ? res.agenda : [],
@@ -1838,7 +1853,6 @@
         Tanggal: tglCetak
       };
 
-      // 1. Simpan ke state & cache lokal agar langsung muncul di Dashboard & Arsip
       const existingIdx = APP_STATE.data.notulensi.findIndex((x) => String(x.ID) === String(docId));
       if (existingIdx >= 0) APP_STATE.data.notulensi[existingIdx] = archiveRecord;
       else APP_STATE.data.notulensi.unshift(archiveRecord);
@@ -1852,7 +1866,6 @@
       renderDashboardNotulensi();
       renderNotulensiArchive();
 
-      // 2. Kirim ke Google Apps Script (saveNotulensiArchive + fallback saveRecord('Notulensi', ...))
       if (agendaId) {
         callServer('saveNotulensi', [agendaId, isi], null, null);
       }
@@ -1860,16 +1873,8 @@
       callServer(
         'saveNotulensiArchive',
         [archiveRecord],
-        (res) => {
-          if (!res || res.success === false) {
-            callServer('saveRecord', ['Notulensi', archiveRecord, ''], null, null);
-          }
-          setTimeout(() => syncDataFromSheet(true), 800);
-        },
-        () => {
-          callServer('saveRecord', ['Notulensi', archiveRecord, ''], null, null);
-          scheduleRetrySync();
-        }
+        () => setTimeout(() => syncDataFromSheet(true), 800),
+        () => scheduleRetrySync()
       );
 
       resetNotulensiForm();

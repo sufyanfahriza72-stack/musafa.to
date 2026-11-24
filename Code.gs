@@ -69,11 +69,6 @@ function readSheetObjects_(meta) {
   if (lastRow < 2) return [];
 
   const rawHeaders = sh.getRange(1, 1, 1, lastCol).getValues()[0].map((h) => String(h || '').trim());
-  const headers = meta.headers.slice();
-  rawHeaders.forEach((h) => {
-    if (h && !headers.includes(h)) headers.push(h);
-  });
-
   const rows = sh.getRange(2, 1, lastRow - 1, lastCol).getValues();
   const result = [];
 
@@ -140,19 +135,13 @@ function verifyLogin(credential) {
 
 function getAllData() {
   try {
-    const agenda = readSheetObjects_(SHEETS.AGENDA);
-    const pelajaran = readSheetObjects_(SHEETS.PELAJARAN);
-    const ujian = readSheetObjects_(SHEETS.UJIAN);
-    const tugas = readSheetObjects_(SHEETS.TUGAS);
-    const notulensi = readSheetObjects_(SHEETS.NOTULENSI);
-
     return {
       success: true,
-      agenda: agenda,
-      pelajaran: pelajaran,
-      ujian: ujian,
-      tugas: tugas,
-      notulensi: notulensi
+      agenda: readSheetObjects_(SHEETS.AGENDA),
+      pelajaran: readSheetObjects_(SHEETS.PELAJARAN),
+      ujian: readSheetObjects_(SHEETS.UJIAN),
+      tugas: readSheetObjects_(SHEETS.TUGAS),
+      notulensi: readSheetObjects_(SHEETS.NOTULENSI)
     };
   } catch (err) {
     return {
@@ -359,6 +348,50 @@ function deleteNotulensiArchive(id, pin) {
   } catch (err) {
     return { success: false, message: 'Gagal menghapus arsip notulensi: ' + err.message };
   }
+}
+
+function seedJadwalPelajaranSekali() {
+  const sh = getOrCreateSheet_(SHEETS.PELAJARAN);
+  const rows = [
+    ['PEL-SEN-01', 'UPACARA BENDERA', '-', 'Senin', '07:00', '08:00'],
+    ['PEL-SEN-02', 'PAI (PA)', 'Khotimah S.Pd', 'Senin', '08:00', '09:45'],
+    ['PEL-SEN-03', 'Sosiologi (SOS)', 'Retno, S.Sos., M.Sos', 'Senin', '10:00', '11:45'],
+    ['PEL-SEN-04', 'Ekonomi (EKO)', 'Istri Yuliati, S.E., M.Pd', 'Senin', '12:35', '13:55'],
+    ['PEL-SEN-05', 'Matematika (MAT)', 'Tiwi Yulistyarini, S.Pd.', 'Senin', '13:55', '15:15'],
+
+    ['PEL-SEL-01', 'Bahasa Indonesia (IND)', 'Niken Nunggar Winawastuti, S.Pd., M.Pd', 'Selasa', '07:00', '08:30'],
+    ['PEL-SEL-02', 'Seni Budaya / Tari (SBK)', 'Raden Bekel Riki Kristianta, S.Sn., M.Sn', 'Selasa', '08:30', '10:00'],
+    ['PEL-SEL-03', 'Bahasa Jerman (JER)', 'Dr.Eng.Humam Kholis, S.Pd., M.Pd', 'Selasa', '10:20', '11:50'],
+    ['PEL-SEL-04', 'Bahasa Inggris Lanjut (INGL)', 'Yustinus Anton Kristianta, S.Pd', 'Selasa', '12:35', '13:55'],
+    ['PEL-SEL-05', 'PPKN (PP)', 'Siwi Hidayah, S.H.,M.H', 'Selasa', '13:55', '15:15'],
+
+    ['PEL-RAB-01', 'Sosiologi (SOS)', 'Retno, S.Sos., M.Sos', 'Rabu', '07:00', '08:30'],
+    ['PEL-RAB-02', 'PJOK', 'Ridwan Fauzi, S.Pd.Jas', 'Rabu', '08:30', '10:00'],
+    ['PEL-RAB-03', 'PJOK (Lanjutan)', 'Ridwan Fauzi, S.Pd.Jas', 'Rabu', '10:20', '11:05'],
+    ['PEL-RAB-04', 'Ekonomi (EKO)', 'Istri Yuliati, S.E., M.Pd', 'Rabu', '11:05', '11:50'],
+    ['PEL-RAB-05', 'Ekonomi (EKO)', 'Istri Yuliati, S.E., M.Pd', 'Rabu', '12:35', '13:55'],
+    ['PEL-RAB-06', 'Matematika (MAT)', 'Tiwi Yulistyarini, S.Pd.', 'Rabu', '13:55', '15:15'],
+
+    ['PEL-KAM-01', 'Bahasa Jerman (JER)', 'Dr.Eng.Humam Kholis, S.Pd., M.Pd', 'Kamis', '07:00', '08:30'],
+    ['PEL-KAM-02', 'Sejarah (SEJ)', 'Maharjono, S.Pd., M.Pd', 'Kamis', '08:30', '10:00'],
+    ['PEL-KAM-03', 'Bahasa Inggris Lanjut (INGL)', 'Yustinus Anton Kristianta, S.Pd', 'Kamis', '10:20', '11:50'],
+    ['PEL-KAM-04', 'Bahasa Inggris Lanjut (INGL)', 'Yustinus Anton Kristianta, S.Pd', 'Kamis', '12:35', '13:15'],
+    ['PEL-KAM-05', 'Bahasa Inggris (ING)', 'Hoeriyah, S.Pd., M.Pd', 'Kamis', '13:15', '15:15'],
+
+    ['PEL-JUM-01', 'SENAM PAGI', '-', 'Jumat', '07:00', '07:45'],
+    ['PEL-JUM-02', 'Bahasa Jawa (JAW)', 'Raden Bekel Suprahwana Wahyu Diharja, S.S', 'Jumat', '07:45', '08:55'],
+    ['PEL-JUM-03', 'Bahasa Indonesia (IND)', 'Niken Nunggar Winawastuti, S.Pd.,M.Pd', 'Jumat', '08:55', '10:05'],
+    ['PEL-JUM-04', 'Bahasa Jerman (JER)', 'Dr.Eng.Humam Kholis, S.Pd., M.Pd', 'Jumat', '10:20', '10:55']
+  ];
+
+  if (sh.getLastRow() >= 2) {
+    sh.getRange(2, 1, sh.getLastRow() - 1, SHEETS.PELAJARAN.headers.length).clearContent();
+  }
+  const range = sh.getRange(2, 1, rows.length, SHEETS.PELAJARAN.headers.length);
+  range.setNumberFormat('@');
+  range.setValues(rows);
+  SpreadsheetApp.flush();
+  return { success: true, count: rows.length };
 }
 
 function computeTteTokenForSlot_(slot) {

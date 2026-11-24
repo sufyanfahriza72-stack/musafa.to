@@ -1,7 +1,6 @@
-const CACHE_NAME = 'musafa-pwa-final-v1';
+const CACHE_NAME = 'musafa-mobile-v1';
 const STATIC_ASSETS = [
-  './',
-  './index.html',
+  './Index.html',
   './manifest.json'
 ];
 
@@ -10,6 +9,12 @@ self.addEventListener('install', (event) => {
     caches.open(CACHE_NAME).then((cache) => cache.addAll(STATIC_ASSETS)).catch(() => {})
   );
   self.skipWaiting();
+});
+
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
 });
 
 self.addEventListener('activate', (event) => {
@@ -21,31 +26,22 @@ self.addEventListener('activate', (event) => {
   self.clients.claim();
 });
 
-self.addEventListener('message', (event) => {
-  if (event.data && event.data.type === 'SKIP_WAITING') {
-    self.skipWaiting();
-  }
-});
-
 self.addEventListener('fetch', (event) => {
-  const req = event.request;
-  if (req.method !== 'GET') return;
+  if (event.request.method !== 'GET') return;
+  const url = new URL(event.request.url);
 
-  const url = new URL(req.url);
+  // Selalu ambil data terbaru dari Google Apps Script / API eksternal
   if (url.hostname.includes('script.google.com') || url.hostname.includes('googleusercontent.com')) {
-    event.respondWith(fetch(req));
     return;
   }
 
   event.respondWith(
-    fetch(req)
+    fetch(event.request)
       .then((res) => {
-        if (res && res.status === 200 && url.origin === self.location.origin) {
-          const clone = res.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(req, clone));
-        }
+        const clone = res.clone();
+        caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone)).catch(() => {});
         return res;
       })
-      .catch(() => caches.match(req).then((cached) => cached || caches.match('./index.html')))
+      .catch(() => caches.match(event.request))
   );
 });
